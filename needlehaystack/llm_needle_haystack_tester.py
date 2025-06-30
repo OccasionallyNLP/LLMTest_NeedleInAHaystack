@@ -194,7 +194,7 @@ class LLMNeedleHaystackTester:
             print (f"Response: {response}\n")
 
         context_file_location = f'{self.model_name.replace(".", "_")}_len_{context_length}_depth_{int(depth_percent*100)}'
-
+        context_file_location = context_file_location.replace('/','_')
         if self.save_contexts:
             results['file_name'] = context_file_location
 
