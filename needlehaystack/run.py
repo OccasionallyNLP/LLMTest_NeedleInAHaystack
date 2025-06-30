@@ -6,7 +6,7 @@ from jsonargparse import CLI
 
 from . import LLMNeedleHaystackTester, LLMMultiNeedleHaystackTester
 from .evaluators import Evaluator, LangSmithEvaluator, OpenAIEvaluator
-from .providers import Anthropic, ModelProvider, OpenAI, Cohere
+from .providers import Anthropic, ModelProvider, OpenAI, Cohere, Custom
 
 load_dotenv()
 
@@ -44,6 +44,9 @@ class CommandArgs():
         " Prosciutto is one of the secret ingredients needed to build the perfect pizza. ", 
         " Goat cheese is one of the secret ingredients needed to build the perfect pizza. "
     ])
+    answer: Optional[str] = "eat a sandwich and sit in Dolores Park on a sunny day." # XXX
+    chat_template:bool = False
+
 
 def get_model_to_test(args: CommandArgs) -> ModelProvider:
     """
@@ -65,6 +68,8 @@ def get_model_to_test(args: CommandArgs) -> ModelProvider:
             return Anthropic(model_name=args.model_name)
         case "cohere":
             return Cohere(model_name=args.model_name)
+        case "custom":
+            return Custom(model_name=args.model_name)
         case _:
             raise ValueError(f"Invalid provider: {args.provider}")
 
@@ -85,7 +90,7 @@ def get_evaluator(args: CommandArgs) -> Evaluator:
         case "openai":
             return OpenAIEvaluator(model_name=args.evaluator_model_name,
                                    question_asked=args.retrieval_question,
-                                   true_answer=args.needle)
+                                   true_answer=args.answer if args.answer is not None else args.needle)
         case "langsmith":
             return LangSmithEvaluator()
         case _:

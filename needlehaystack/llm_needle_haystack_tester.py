@@ -8,7 +8,7 @@ import numpy as np
 
 from .evaluators import Evaluator
 from .providers import ModelProvider
-
+from .providers.custom import Custom
 from asyncio import Semaphore
 from datetime import datetime, timezone
 
@@ -24,7 +24,7 @@ class LLMNeedleHaystackTester:
                  retrieval_question = None,
                  results_version = 1,
                  context_lengths_min = 1000,
-                 context_lengths_max = 16000,
+                 context_lengths_max = 32000,
                  context_lengths_num_intervals = 35,
                  context_lengths = None,
                  document_depth_percent_min = 0,
@@ -38,6 +38,8 @@ class LLMNeedleHaystackTester:
                  final_context_length_buffer = 200,
                  seconds_to_sleep_between_completions = None,
                  print_ongoing_status = True,
+                 answer = None,
+                 chat_template = False,
                  **kwargs):
         """
         :model_to_test: The model to test. Default is None.
@@ -78,6 +80,8 @@ class LLMNeedleHaystackTester:
         self.save_contexts = save_contexts
         self.seconds_to_sleep_between_completions = seconds_to_sleep_between_completions
         self.print_ongoing_status = print_ongoing_status
+        self.answer = answer
+        self.chat_template = chat_template
         self.testing_results = []
 
         if context_lengths is None:
@@ -146,12 +150,18 @@ class LLMNeedleHaystackTester:
         context = await self.generate_context(context_length, depth_percent)
 
         # Prepare your message to send to the model you're going to evaluate
-        prompt = self.model_to_test.generate_prompt(context, self.retrieval_question)
+        if isinstance(self.model_to_test, Custom):
+            prompt = self.model_to_test.generate_prompt(context, self.retrieval_question, self.chat_template)
+        else:
+            prompt = self.model_to_test.generate_prompt(context, self.retrieval_question)
 
         test_start_time = time.time()
 
         # Go see if the model can answer the question to pull out your random fact
-        response = await self.model_to_test.evaluate_model(prompt)
+        if isinstance(self.model_to_test, Custom):
+            response = await self.model_to_test.evaluate_model(prompt, self.chat_template)
+        else:
+            response = await self.model_to_test.evaluate_model(prompt)
 
         test_end_time = time.time()
         test_elapsed_time = test_end_time - test_start_time
@@ -167,6 +177,7 @@ class LLMNeedleHaystackTester:
             'version' : self.results_version,
             'needle' : self.needle,
             'model_response' : response,
+            'answer' : self.answer,
             'score' : score,
             'test_duration_seconds' : test_elapsed_time,
             'test_timestamp_utc' : datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S%z')
